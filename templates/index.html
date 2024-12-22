@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Directory</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Company Directory</h1>
+        <input type="text" id="search" placeholder="Search for companies..." onkeyup="filterCompanies()">
+        <div id="company-list"></div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Edit Company</h2>
+            <img id="edit-logo" src="" alt="Company Logo" style="max-width: 100px; display: none;">
+            <input type="text" id="edit-name" placeholder="Company Name">
+            <input type="text" id="edit-description" placeholder="Description">
+            <input type="text" id="edit-email" placeholder="Email">
+            <input type="text" id="edit-phone" placeholder="Phone">
+            <input type="text" id="edit-website" placeholder="Website">
+            <input type="text" id="edit-stand-reference" placeholder="Stand Reference">
+            <button id="save-button" onclick="saveChanges()">Save Changes</button>
+            <button id="delete-button" onclick="deleteCompany()">Delete Company</button>
+        </div>
+    </div>
+
+    <script>
+        let companies = [];
+        let currentCompanyId = '';
+
+        // Fetch company data from the API
+        fetch('/api/companies')
+            .then(response => response.json())
+            .then(data => {
+                companies = data.hits; // Adjusted to match the new data structure
+                displayCompanies(companies);
+            });
+
+        function displayCompanies(companies) {
+            const companyList = document.getElementById('company-list');
+            companyList.innerHTML = '';
+            companies.forEach(company => {
+                const companyDiv = document.createElement('div');
+                companyDiv.className = 'company-card';
+                companyDiv.innerHTML = `
+                    <img src="${company.logo}" alt="${company.companyName} Logo" class="company-logo">
+                    <h3>${company.companyName}</h3>
+                    <p><strong>Description:</strong> ${company.exhibitorDescription}</p>
+                    <p><strong>Email:</strong> ${company.email}</p>
+                    <p><strong>Phone:</strong> ${company.phone}</p>
+                    <p><strong>Website:</strong> <a href="${company.website}" target="_blank">${company.website}</a></p>
+                    <p><strong>Stand Reference:</strong> ${company.standReference}</p>
+                    <button onclick="openModal('${company.id}')">Edit</button>
+                `;
+                companyList.appendChild(companyDiv);
+            });
+        }
+
+        function openModal(id) {
+            const company = companies.find(c => c.id === id);
+            currentCompanyId = id;
+            document.getElementById('edit-logo').src = company.logo;
+            document.getElementById('edit-logo').style.display = 'block';
+            document.getElementById('edit-name').value = company.companyName;
+            document.getElementById('edit-description').value = company.exhibitorDescription;
+            document.getElementById('edit-email').value = company.email;
+            document.getElementById('edit-phone').value = company.phone;
+            document.getElementById('edit-website').value = company.website;
+            document.getElementById('edit-stand-reference').value = company.standReference;
+            document.getElementById('modal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function saveChanges() {
+            const updatedCompany = {
+                companyName: document.getElementById('edit-name').value,
+                exhibitorDescription: document.getElementById('edit-description').value,
+                email: document.getElementById('edit-email').value,
+                phone: document.getElementById('edit-phone').value,
+                website: document.getElementById('edit-website').value,
+                standReference: document.getElementById('edit-stand-reference').value,
+                logo: document.getElementById('edit-logo').src // Keep the logo URL
+            };
+
+            fetch(`/api/companies/${currentCompanyId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedCompany)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                closeModal();
+                fetch('/api/companies')
+                    .then(response => response.json())
+                    .then(data => displayCompanies(data.hits)); // Adjusted to match the new data structure
+            });
+        }
+
+        function deleteCompany() {
+            fetch(`/api/companies/${currentCompanyId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                closeModal();
+                fetch('/api/companies')
+                    .then(response => response.json())
+                    .then(data => displayCompanies(data.hits)); // Adjusted to match the new data structure
+            });
+        }
+
+        function filterCompanies() {
+            const searchValue = document.getElementById('search').value.toLowerCase();
+            const filteredCompanies = companies.filter(company => company.companyName.toLowerCase().includes(searchValue));
+            displayCompanies(filteredCompanies);
+        }
+    </script>
+</body>
+</html>
